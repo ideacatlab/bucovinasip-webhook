@@ -42,6 +42,7 @@ return [
             'name' => env('BREVO_SENDER_NAME', env('MAIL_FROM_NAME')),
         ],
         'default_list_id' => env('BREVO_DEFAULT_LIST_ID', 17),
+        'default_template_id' => env('BREVO_DEFAULT_TEMPLATE_ID', 105),
     ],
 
 ];

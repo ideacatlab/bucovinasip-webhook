@@ -89,10 +89,13 @@ class SendBrevoEmail implements ShouldQueue
             // Get default sender from config
             $defaultSender = config('services.brevo.default_sender');
 
+            // Get template ID from config
+            $templateId = config('services.brevo.default_template_id');
+
             // Build and send email
             $brevoEmail = (new BrevoEmail)
                 ->to($email, $firstName)
-                ->template(105)
+                ->template($templateId)
                 ->params([
                     'FIRSTNAME' => $firstName,
                     'PRICEMP' => $pricemp,
