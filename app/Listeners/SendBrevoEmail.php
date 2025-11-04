@@ -109,6 +109,9 @@ class SendBrevoEmail implements ShouldQueue
             $response = Brevo::sendTemplateEmail($brevoEmail);
 
             if ($response->isSuccessful()) {
+                // Email sent successfully, now add contact to list
+                $this->addContactToBrevoList($email, $firstName, $pricemp);
+
                 $webhook->markAsProcessed('Email sent via Brevo. Message ID: '.$response->getMessageId());
 
                 Log::info('Brevo email sent successfully', [
@@ -208,5 +211,60 @@ class SendBrevoEmail implements ShouldQueue
         }
 
         return false;
+    }
+
+    /**
+     * Add contact to Brevo list with attributes
+     */
+    protected function addContactToBrevoList(string $email, string $firstName, string $pricemp): void
+    {
+        try {
+            $listId = config('services.brevo.default_list_id');
+
+            if (empty($listId)) {
+                Log::warning('Brevo list ID not configured, skipping contact addition', [
+                    'email' => $email,
+                ]);
+
+                return;
+            }
+
+            // Prepare contact attributes
+            $attributes = [
+                'FIRSTNAME' => $firstName,
+            ];
+
+            // Add PRICEMP only if not empty
+            if (! empty($pricemp)) {
+                $attributes['PRICEMP'] = $pricemp;
+            }
+
+            $response = Brevo::addContactToList(
+                email: $email,
+                listId: $listId,
+                attributes: $attributes,
+                updateEnabled: true // Update if contact already exists
+            );
+
+            if ($response->isSuccessful()) {
+                Log::info('Contact added to Brevo list successfully', [
+                    'email' => $email,
+                    'list_id' => $listId,
+                    'attributes' => $attributes,
+                ]);
+            } else {
+                Log::warning('Failed to add contact to Brevo list', [
+                    'email' => $email,
+                    'list_id' => $listId,
+                    'error' => $response->getError(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Don't fail the whole process if contact addition fails
+            Log::error('Exception while adding contact to Brevo list', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

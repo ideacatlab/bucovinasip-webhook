@@ -133,6 +133,51 @@ class BrevoClient
     }
 
     /**
+     * Add or update a contact in Brevo
+     *
+     * @param  array<string, mixed>  $contactData
+     */
+    public function createOrUpdateContact(array $contactData): BrevoResponse
+    {
+        Log::info('Adding/updating Brevo contact', [
+            'email' => $contactData['email'] ?? 'unknown',
+            'list_ids' => $contactData['listIds'] ?? [],
+        ]);
+
+        try {
+            $response = $this->makeRequest()
+                ->post('/contacts', $contactData);
+
+            return $this->handleResponse($response);
+        } catch (\Exception $e) {
+            Log::error('Brevo contact API error', [
+                'error' => $e->getMessage(),
+                'contact_data' => $contactData,
+            ]);
+
+            throw new BrevoException('Failed to add/update contact: '.$e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Add contact to a list with optional attributes
+     */
+    public function addContactToList(string $email, int $listId, array $attributes = [], bool $updateEnabled = false): BrevoResponse
+    {
+        $payload = [
+            'email' => $email,
+            'listIds' => [$listId],
+            'updateEnabled' => $updateEnabled,
+        ];
+
+        if (! empty($attributes)) {
+            $payload['attributes'] = $attributes;
+        }
+
+        return $this->createOrUpdateContact($payload);
+    }
+
+    /**
      * Create HTTP client with authentication
      */
     protected function makeRequest(): PendingRequest
@@ -153,14 +198,19 @@ class BrevoClient
     protected function handleResponse(Response $response): BrevoResponse
     {
         if ($response->successful()) {
+            // Handle 204 No Content responses (contact updated)
+            $data = $response->json() ?? [];
+
             return new BrevoResponse(
                 success: true,
                 messageId: $response->json('messageId'),
-                data: $response->json()
+                data: $data,
+                statusCode: $response->status()
             );
         }
 
         $error = $response->json('message', $response->body());
+        $data = $response->json() ?? [];
 
         Log::error('Brevo API request failed', [
             'status' => $response->status(),
@@ -171,7 +221,7 @@ class BrevoClient
         return new BrevoResponse(
             success: false,
             messageId: null,
-            data: $response->json(),
+            data: $data,
             error: $error,
             statusCode: $response->status()
         );

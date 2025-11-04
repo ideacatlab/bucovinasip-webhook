@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static array getTemplates()
  * @method static array getTemplate(int $templateId)
  * @method static bool testConnection()
+ * @method static BrevoResponse createOrUpdateContact(array $contactData)
+ * @method static BrevoResponse addContactToList(string $email, int $listId, array $attributes = [], bool $updateEnabled = false)
  *
  * @see BrevoClient
  */
