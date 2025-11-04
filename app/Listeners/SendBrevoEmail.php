@@ -20,16 +20,42 @@ class SendBrevoEmail implements ShouldQueue
     {
         $webhook = $event->webhook;
 
+        // Parse Metform entries if present
+        $entries = $this->parseMetformEntries($webhook);
+
+        // Check referrer URL to determine if we should process
+        $referrerUrl = $webhook->getPayloadField('referrer_url');
+
+        if (! $this->shouldProcessWebhook($referrerUrl)) {
+            Log::info('Webhook skipped - referrer URL does not match allowed list', [
+                'webhook_id' => $webhook->id,
+                'referrer_url' => $referrerUrl,
+            ]);
+
+            $webhook->markAsProcessed('Skipped - referrer URL not in allowed list: '.$referrerUrl);
+
+            return;
+        }
+
         // Get email and name from webhook
-        $email = $webhook->getEmail();
-        $firstName = $webhook->getPayloadField('first_name')
+        $email = $entries['mf-email']
+            ?? $entries['email']
+            ?? $webhook->getEmail();
+
+        $firstName = $entries['mf-listing-fname']
+            ?? $entries['first_name']
+            ?? $entries['name']
+            ?? $entries['firstname']
+            ?? $webhook->getPayloadField('first_name')
             ?? $webhook->getPayloadField('name')
-            ?? $webhook->getPayloadField('firstname')
             ?? 'Guest';
 
-        $pricemp = $webhook->getPayloadField('pricemp')
+        $pricemp = $entries['mf-pret-total']
+            ?? $entries['pricemp']
+            ?? $entries['price']
+            ?? $entries['PRICEMP']
+            ?? $webhook->getPayloadField('pricemp')
             ?? $webhook->getPayloadField('price')
-            ?? $webhook->getPayloadField('PRICEMP')
             ?? '';
 
         if (empty($email)) {
@@ -123,5 +149,64 @@ class SendBrevoEmail implements ShouldQueue
         ]);
 
         $event->webhook->markAsFailed('Failed after retries: '.$exception->getMessage());
+    }
+
+    /**
+     * Parse Metform entries JSON string
+     */
+    protected function parseMetformEntries($webhook): array
+    {
+        $entriesJson = $webhook->getPayloadField('entries');
+
+        if (empty($entriesJson)) {
+            return [];
+        }
+
+        // Decode the JSON string
+        $entries = json_decode($entriesJson, true);
+
+        if (! is_array($entries)) {
+            Log::warning('Failed to parse Metform entries JSON', [
+                'webhook_id' => $webhook->id,
+                'entries' => $entriesJson,
+            ]);
+
+            return [];
+        }
+
+        Log::debug('Parsed Metform entries', [
+            'webhook_id' => $webhook->id,
+            'entries' => $entries,
+        ]);
+
+        return $entries;
+    }
+
+    /**
+     * Check if webhook should be processed based on referrer URL
+     */
+    protected function shouldProcessWebhook(?string $referrerUrl): bool
+    {
+        if (empty($referrerUrl)) {
+            // If no referrer URL, allow processing (backward compatibility)
+            return true;
+        }
+
+        // Define allowed referrer URLs
+        $allowedReferrers = [
+            'https://proiectare.bucovinasip.ro/formular/',
+            // Add more allowed URLs here as needed
+            // 'https://example.com/contact/',
+            // 'https://example.com/quote/',
+        ];
+
+        // Check if referrer URL matches any allowed URLs
+        foreach ($allowedReferrers as $allowed) {
+            if ($referrerUrl === $allowed || str_starts_with($referrerUrl, $allowed)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
