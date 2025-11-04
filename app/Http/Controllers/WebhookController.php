@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\WebhookReceived;
 use App\Models\MetformWebhook;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,9 @@ class WebhookController extends Controller
             Log::info('Metform webhook received', [
                 'webhook_id' => $webhook->id,
             ]);
+
+            // Fire event to send Brevo email
+            event(new WebhookReceived($webhook));
 
             return response()->json([
                 'success' => true,

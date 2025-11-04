@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY'),
+        'default_sender' => [
+            'email' => env('BREVO_SENDER_EMAIL', env('MAIL_FROM_ADDRESS')),
+            'name' => env('BREVO_SENDER_NAME', env('MAIL_FROM_NAME')),
+        ],
+    ],
+
 ];
