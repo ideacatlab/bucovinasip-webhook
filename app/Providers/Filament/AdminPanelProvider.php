@@ -42,7 +42,7 @@ class AdminPanelProvider extends PanelProvider
             ->darkModeBrandLogo(asset('images/TurboCat-dark.svg'))
             ->brandLogoHeight('1.5rem')
             ->favicon(asset('images/favicon.svg'))
-
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->colors([
                 'danger' => Color::Rose,
                 'gray' => Color::Zinc,

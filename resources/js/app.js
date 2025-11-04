@@ -9,11 +9,9 @@
 import './bootstrap';
 import { initNavigation } from './navigation.js';
 import { initCarousels } from './carousel.js';
-import { initLottieAnimations } from './lottie.js';
 
 // Wait for the DOM to be ready before running any scripts.
 document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initCarousels();
-  initLottieAnimations();
 });
